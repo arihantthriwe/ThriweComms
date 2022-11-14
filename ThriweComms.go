@@ -13,7 +13,6 @@ import (
 	"github.com/labstack/gommon/random"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/aws/smithy-go"
@@ -33,7 +32,7 @@ type thriweCommsAPI struct {
 }
 
 // NewThriweCommsAPI creates a new object for ThriweCommsAPI just pass-in the aws.config, projectCode()
-func NewThriweCommsAPI(client *sqs.Client, projectCode, sqsQueueName *string) ThriweCommsAPI {
+func NewThriweCommsClient(client *sqs.Client, projectCode, sqsQueueName *string) ThriweCommsAPI {
 	return &thriweCommsAPI{client: client, projectCode: projectCode, sqsQueueName: sqsQueueName}
 }
 
@@ -86,27 +85,27 @@ type TrackerResponseType struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-func main() {
-	var c echo.Context
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		panic("configuration error, " + err.Error())
-	}
-	sqsClient := sqs.NewFromConfig(cfg)
-	emailSubject := flag.String("es", ``, "email subject")
-	emailMessageBody := flag.String("emb", `<div style='font-family:Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2'><div style='margin:50px auto;width:70%;padding:20px 0'><div style='border-bottom:1px solid #eee'><a href='' style='font-size:1.4em;color:#00466a;text-decoration:none;font-weight:600'>Your Brand</a></div><p style='font-size:1.1em'>Hi,</p><p>Thank you for choosing Your Brand. Use the following OTP to complete your Sign Up procedures. OTP is valid for 5 minutes</p><h2 style='background:#00466a;margin:0 auto;width:max-content;padding:0 10px;color:#fff;border-radius:4px'>123456</h2><p style='font-size:.9em'>Regards,<br>Your Brand</p><hr style='border:none;border-top:1px solid #eee'><div style='float:right;padding:8px 0;color:#aaa;font-size:.8em;line-height:1;font-weight:300'><p>Your Brand Inc</p><p>1600 Amphitheatre Parkway</p><p>California</p></div></div></div>`, "email message body")
-	smsMessageBody := flag.String("smb", `'Hi, \n123456 is your OTP to verify your mobile number. OTP Code is valid for 10 minutes. THRIWE'`, "sms message body")
-	queue := flag.String("q", "sms-mail", "The name of the queue")
-	projectCode := flag.String("p", "FAB-ONE", "project code")
-	recipientEmail := flag.String("re", "arihant.jain@thriwe.com", "recipient email")
-	recipientName := flag.String("rn", "", "recipient name")
-	countryCode := flag.String("c", "+91", "country code")
-	mobileNumber := flag.String("m", "8630771592", "mobile number")
-	thriweCommsAPI := NewThriweCommsAPI(sqsClient, projectCode, queue)
-	thriweCommsAPI.SendMail(c, recipientEmail, recipientName, emailMessageBody, emailSubject, requestId())
-	fmt.Println(*smsMessageBody, *mobileNumber, *countryCode)
-	// thriweCommsAPI.SendSms(c, countryCode, mobileNumber, smsMessageBody, requestId())
-}
+// func main() {
+// 	var c echo.Context
+// 	cfg, err := config.LoadDefaultConfig(context.TODO())
+// 	if err != nil {
+// 		panic("configuration error, " + err.Error())
+// 	}
+// 	sqsClient := sqs.NewFromConfig(cfg)
+// 	emailSubject := flag.String("es", ``, "email subject")
+// 	emailMessageBody := flag.String("emb", `<div style='font-family:Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2'><div style='margin:50px auto;width:70%;padding:20px 0'><div style='border-bottom:1px solid #eee'><a href='' style='font-size:1.4em;color:#00466a;text-decoration:none;font-weight:600'>Your Brand</a></div><p style='font-size:1.1em'>Hi,</p><p>Thank you for choosing Your Brand. Use the following OTP to complete your Sign Up procedures. OTP is valid for 5 minutes</p><h2 style='background:#00466a;margin:0 auto;width:max-content;padding:0 10px;color:#fff;border-radius:4px'>123456</h2><p style='font-size:.9em'>Regards,<br>Your Brand</p><hr style='border:none;border-top:1px solid #eee'><div style='float:right;padding:8px 0;color:#aaa;font-size:.8em;line-height:1;font-weight:300'><p>Your Brand Inc</p><p>1600 Amphitheatre Parkway</p><p>California</p></div></div></div>`, "email message body")
+// 	smsMessageBody := flag.String("smb", `'Hi, \n123456 is your OTP to verify your mobile number. OTP Code is valid for 10 minutes. THRIWE'`, "sms message body")
+// 	queue := flag.String("q", "sms-mail", "The name of the queue")
+// 	projectCode := flag.String("p", "FAB-ONE", "project code")
+// 	recipientEmail := flag.String("re", "arihant.jain@thriwe.com", "recipient email")
+// 	recipientName := flag.String("rn", "", "recipient name")
+// 	countryCode := flag.String("c", "+91", "country code")
+// 	mobileNumber := flag.String("m", "8630771592", "mobile number")
+// 	thriweCommsAPI := NewThriweCommsClient(sqsClient, projectCode, queue)
+// 	thriweCommsAPI.SendMail(c, recipientEmail, recipientName, emailMessageBody, emailSubject, requestId())
+// 	fmt.Println(*smsMessageBody, *mobileNumber, *countryCode)
+// 	// thriweCommsAPI.SendSms(c, countryCode, mobileNumber, smsMessageBody, requestId())
+// }
 func (t *thriweCommsAPI) SendMail(c echo.Context, recipientEmail, recipientName, emailMessageBody, emailSubject, requestId *string) (string, error) {
 	flag.Parse()
 	if *t.sqsQueueName == "" {
@@ -129,6 +128,7 @@ func (t *thriweCommsAPI) SendMail(c echo.Context, recipientEmail, recipientName,
 		URL("https://dev-fab-api-gateway.thriwe.com/parse/classes/tracker").
 		Header("X-Parse-Application-Id", "DEV_APPLICATION_ID").
 		Header("X-Parse-Master-Key", "DEV_MASTER_KEY").
+		Header("X-Auth-Server", "1").
 		BodyJSON(&body).
 		ToJSON(&responseTracker).
 		Fetch(context.Background())
@@ -143,7 +143,7 @@ func (t *thriweCommsAPI) SendMail(c echo.Context, recipientEmail, recipientName,
 	}
 
 	queueURL := result.QueueUrl
-	queueBody := `{"commsId":"1","projectCode":"` + *t.projectCode + `","recipientEmail":"` + *recipientEmail + `","recipientName":"`+*recipientName+`","requestId":"` + *requestId + `","messageBody":"` + *emailMessageBody + `","emailSubject":"`+*emailSubject+`","trackerObjectId":"` + responseTracker.ObjectId + `"}`
+	queueBody := `{"commsId":"1","projectCode":"` + *t.projectCode + `","recipientEmail":"` + *recipientEmail + `","recipientName":"` + *recipientName + `","requestId":"` + *requestId + `","messageBody":"` + *emailMessageBody + `","emailSubject":"` + *emailSubject + `","trackerObjectId":"` + responseTracker.ObjectId + `"}`
 	sMInput := &sqs.SendMessageInput{
 		DelaySeconds: 1,
 		MessageAttributes: map[string]types.MessageAttributeValue{
