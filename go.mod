@@ -1,4 +1,4 @@
-module github.com/arihantthriwe/ThriweComms
+module github.com/Thriwe-2-0/ThriweComms
 
 go 1.18
 
