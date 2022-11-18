@@ -1,10 +1,10 @@
-module github.com/arihantthriwe/ThriweComms
+module github.com/Thriwe-2-0/ThriweComms
 
 go 1.18
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.17.1
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.19.13
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.19.14
 	github.com/aws/smithy-go v1.13.4
 	github.com/carlmjohnson/requests v0.22.3
 	github.com/labstack/echo/v4 v4.9.1
