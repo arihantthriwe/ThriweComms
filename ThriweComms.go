@@ -21,18 +21,18 @@ import (
 
 // ThriweCommsAPI defines the interface for the SendMail and SendSms functions.
 type ThriweCommsAPI interface {
-	SendMail(c echo.Context, recipientEmail, recipientName, emailMessageBody, emailSubject, requestId *string) (string, error)
-	SendSms(c echo.Context, countryCode, mobileNumber, smsMessageBody, requestId *string) (string, error)
+	SendMail(c echo.Context, recipientEmail, recipientName, emailMessageBody, emailSubject, requestId string) (string, error)
+	SendSms(c echo.Context, countryCode, mobileNumber, smsMessageBody, requestId string) (string, error)
 }
 
 type thriweCommsAPI struct {
 	client       *sqs.Client
-	projectCode  *string
-	sqsQueueName *string
+	projectCode  string
+	sqsQueueName string
 }
 
 // NewThriweCommsAPI creates a new object for ThriweCommsAPI just pass-in the aws.config, projectCode()
-func NewThriweCommsClient(client *sqs.Client, projectCode, sqsQueueName *string) ThriweCommsAPI {
+func NewThriweCommsClient(client *sqs.Client, projectCode, sqsQueueName string) ThriweCommsAPI {
 	return &thriweCommsAPI{client: client, projectCode: projectCode, sqsQueueName: sqsQueueName}
 }
 
@@ -106,23 +106,23 @@ type TrackerResponseType struct {
 // 	fmt.Println(*smsMessageBody, *mobileNumber, *countryCode)
 // 	// thriweCommsAPI.SendSms(c, countryCode, mobileNumber, smsMessageBody, requestId())
 // }
-func (t *thriweCommsAPI) SendMail(c echo.Context, recipientEmail, recipientName, emailMessageBody, emailSubject, requestId *string) (string, error) {
+func (t *thriweCommsAPI) SendMail(c echo.Context, recipientEmail, recipientName, emailMessageBody, emailSubject, requestId string) (string, error) {
 	flag.Parse()
-	if *t.sqsQueueName == "" {
+	if t.sqsQueueName == "" {
 		return "", fmt.Errorf("you must supply the name of a queue (-q QUEUE)")
 	}
-	if *emailMessageBody == "" {
+	if emailMessageBody == "" {
 		return "", fmt.Errorf("you must supply the message body (-mb MESSAGE-BODY)")
 	}
-	if *requestId == "" {
+	if requestId == "" {
 		return "", fmt.Errorf("you must supply the request id (-rID REQUEST-ID)")
 	}
 
 	// Get URL of queue
 	gQInput := &sqs.GetQueueUrlInput{
-		QueueName: t.sqsQueueName,
+		QueueName: &t.sqsQueueName,
 	}
-	body := TrackerRequestType{MessageBody: *emailMessageBody, RequestId: *requestId, Status: "INITIATED", CommsId: "1", ProjectCode: *t.projectCode}
+	body := TrackerRequestType{MessageBody: emailMessageBody, RequestId: requestId, Status: "INITIATED", CommsId: "1", ProjectCode: t.projectCode}
 	var responseTracker TrackerResponseType
 	errTrackerRequest := requests.
 		URL("https://dev-fab-api-gateway.thriwe.com/parse/classes/tracker").
@@ -143,7 +143,7 @@ func (t *thriweCommsAPI) SendMail(c echo.Context, recipientEmail, recipientName,
 	}
 
 	queueURL := result.QueueUrl
-	queueBody := `{"commsId":"1","projectCode":"` + *t.projectCode + `","recipientEmail":"` + *recipientEmail + `","recipientName":"` + *recipientName + `","requestId":"` + *requestId + `","messageBody":"` + *emailMessageBody + `","emailSubject":"` + *emailSubject + `","trackerObjectId":"` + responseTracker.ObjectId + `"}`
+	queueBody := `{"commsId":"1","projectCode":"` + t.projectCode + `","recipientEmail":"` + recipientEmail + `","recipientName":"` + recipientName + `","requestId":"` + requestId + `","messageBody":"` + emailMessageBody + `","emailSubject":"` + emailSubject + `","trackerObjectId":"` + responseTracker.ObjectId + `"}`
 	sMInput := &sqs.SendMessageInput{
 		DelaySeconds: 1,
 		MessageAttributes: map[string]types.MessageAttributeValue{
@@ -175,23 +175,23 @@ func (t *thriweCommsAPI) SendMail(c echo.Context, recipientEmail, recipientName,
 	log.Println("Sent message with ID: " + *resp.MessageId)
 	return *resp.MessageId, nil
 }
-func (t *thriweCommsAPI) SendSms(c echo.Context, countryCode, mobileNumber, smsMessageBody, requestId *string) (string, error) {
+func (t *thriweCommsAPI) SendSms(c echo.Context, countryCode, mobileNumber, smsMessageBody, requestId string) (string, error) {
 	flag.Parse()
-	if *t.sqsQueueName == "" {
+	if t.sqsQueueName == "" {
 		return "", fmt.Errorf("you must supply the name of a queue (-q QUEUE)")
 	}
-	if *smsMessageBody == "" {
+	if smsMessageBody == "" {
 		return "", fmt.Errorf("you must supply the message body (-mb MESSAGE-BODY)")
 	}
-	if *requestId == "" {
+	if requestId == "" {
 		return "", fmt.Errorf("you must supply the request id (-rID REQUEST-ID)")
 	}
 
 	// Get URL of queue
 	gQInput := &sqs.GetQueueUrlInput{
-		QueueName: t.sqsQueueName,
+		QueueName: &t.sqsQueueName,
 	}
-	body := TrackerRequestType{MessageBody: *smsMessageBody, RequestId: *requestId, Status: "INITIATED", CommsId: "2", ProjectCode: *t.projectCode}
+	body := TrackerRequestType{MessageBody: smsMessageBody, RequestId: requestId, Status: "INITIATED", CommsId: "2", ProjectCode: t.projectCode}
 	var responseTracker TrackerResponseType
 	errTrackerRequest := requests.
 		URL("https://dev-fab-api-gateway.thriwe.com/parse/classes/tracker").
@@ -211,7 +211,7 @@ func (t *thriweCommsAPI) SendSms(c echo.Context, countryCode, mobileNumber, smsM
 	}
 
 	queueURL := result.QueueUrl
-	queueBody := `{"commsId":"2","projectCode":"` + *t.projectCode + `","countryCode":"` + *countryCode + `","mobileNumber":"` + *mobileNumber + `","requestId":"` + *requestId + `","messageBody":"` + *smsMessageBody + `","trackerObjectId":"` + responseTracker.ObjectId + `"}`
+	queueBody := `{"commsId":"2","projectCode":"` + t.projectCode + `","countryCode":"` + countryCode + `","mobileNumber":"` + mobileNumber + `","requestId":"` + requestId + `","messageBody":"` + smsMessageBody + `","trackerObjectId":"` + responseTracker.ObjectId + `"}`
 	sMInput := &sqs.SendMessageInput{
 		DelaySeconds: 1,
 		MessageAttributes: map[string]types.MessageAttributeValue{
